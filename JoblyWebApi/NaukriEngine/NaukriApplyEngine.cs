@@ -456,9 +456,6 @@ public class NaukriApplyEngine
             foreach (var tabId in tabIds)
             {
                 if (appliedCount >= 5) break;
-
-
-
                 try
                 {
                     var tab = driver.FindElements(By.CssSelector($"div.tab-wrapper#{tabId}")).FirstOrDefault();
@@ -675,16 +672,16 @@ public class NaukriApplyEngine
 
                                 var inputBox = driver.FindElement(By.CssSelector("div.footerInputBoxWrapper div.textArea[contenteditable='true']"));
                                 string script = @"
-        const inputBox = arguments[0];
-        const text = arguments[1];
-        inputBox.innerText = text;
+                                            const inputBox = arguments[0];
+                                            const text = arguments[1];
+                                            inputBox.innerText = text;
 
-        const event = new Event('input', { bubbles: true });
-        inputBox.dispatchEvent(event);
+                                            const event = new Event('input', { bubbles: true });
+                                            inputBox.dispatchEvent(event);
 
-        const evt = new Event('change', { bubbles: true });
-        inputBox.dispatchEvent(evt);
-    ";
+                                            const evt = new Event('change', { bubbles: true });
+                                            inputBox.dispatchEvent(evt);
+                                        ";
                                 ((IJavaScriptExecutor)driver).ExecuteScript(script, inputBox, answer);
                                 await Task.Delay(5000);
 
@@ -698,9 +695,9 @@ public class NaukriApplyEngine
                                     if (!string.IsNullOrEmpty(value) && answer.ToLower().Contains(value))
                                     {
                                         ((IJavaScriptExecutor)driver).ExecuteScript(@"
-                arguments[0].checked = true;
-                arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
-            ", radio);
+                                            arguments[0].checked = true;
+                                            arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
+                                        ", radio);
                                         Console.WriteLine($"✅ MCQ Selected: {value}");
                                         selected = true;
                                         break;
@@ -710,9 +707,9 @@ public class NaukriApplyEngine
                                 if (!selected && radios.Count > 0)
                                 {
                                     ((IJavaScriptExecutor)driver).ExecuteScript(@"
-            arguments[0].checked = true;
-            arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
-        ", radios[0]);
+                                        arguments[0].checked = true;
+                                        arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
+                                    ", radios[0]);
                                     Console.WriteLine("⚠️ No match. Defaulted to first MCQ option.");
                                 }
 
@@ -809,7 +806,7 @@ public class NaukriApplyEngine
 
         var client = new RestClient("https://api.groq.com/openai/v1/chat/completions");
         var request = new RestRequest("", Method.Post);
-        request.AddHeader("Authorization", $"Bearer {}");
+        request.AddHeader("Authorization", $"Bearer {_apiKey}");
         request.AddHeader("Content-Type", "application/json");
 
         var payload = new

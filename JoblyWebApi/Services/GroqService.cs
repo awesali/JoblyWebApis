@@ -5,11 +5,18 @@ using RestSharp;
 
 public static class GroqService
 {
+    private static IConfiguration _config;
+
+    public static void Init(IConfiguration config)
+    {
+        _config = config;
+    }
     public static async Task<string> AskGroqAsync(string resumeText, string question)
     {
         var client = new RestClient("https://api.groq.com/openai/v1/chat/completions");
         var request = new RestRequest("", Method.Post);
-        request.AddHeader("Authorization", $"Bearer ");
+        var key = _config["Groq:ApiKey"];
+        request.AddHeader("Authorization", $"Bearer {key}");
         request.AddHeader("Content-Type", "application/json");
 
         var payload = new
