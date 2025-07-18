@@ -1,5 +1,9 @@
-﻿using Microsoft.AspNetCore.Identity.Data;
+﻿using JoblyWebApi.Data.Models;
+using JoblyWebApi.Services;
+using JoblyWebApi.Services.Interface;
+using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -7,26 +11,23 @@ public class AuthController : ControllerBase
 {
     private readonly JwtService _jwt;
     private readonly UserRepository _repo = new UserRepository();
+    private readonly ICommonService _commonService;
 
-    public AuthController(IConfiguration config)
+    public AuthController(IConfiguration config, ICommonService commonService)
     {
         _jwt = new JwtService(config["Jwt:Key"]);
+        _commonService = commonService;
     }
 
-    [HttpPost("register")]
-    public IActionResult Register([FromBody] User user)
+    [HttpPost("Register")]
+    public async Task<IActionResult> Register([FromBody] UserRegister user)
     {
-        var existing = _repo.GetByEmail(user.Email);
-        if (existing != null)
-            return BadRequest("Email already exists");
-
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash);
-        _repo.Register(user);
-        return Ok("User Registered");
+        var result = await _commonService.AuthService.Result.Register(user);
+        return Ok(result);
     }
 
     [HttpPost("login")]
-    public IActionResult Login([FromBody] LoginRequest request)
+    public IActionResult Login([FromBody] UserLogin request)
     {
         var existing = _repo.GetByEmail(request.Email);
         if (existing == null || !BCrypt.Net.BCrypt.Verify(request.Password, existing.PasswordHash))

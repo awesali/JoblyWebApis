@@ -758,7 +758,7 @@ public class NaukriApplyEngine
             }
             catch { /* Ignored if not found */ }
 
-            // Act based on what we found
+            
             if (successMessageFound)
             {
                 await new AppliedJobRepository().Save(new AppliedJob

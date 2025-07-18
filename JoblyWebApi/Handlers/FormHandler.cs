@@ -1,10 +1,7 @@
 ﻿namespace JoblyWebApi.Handlers;
-
-using JoblyWebApi.Repositories;
 using JoblyWebApi.Services;
 using OpenQA.Selenium;
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 
 public class FormHandler
