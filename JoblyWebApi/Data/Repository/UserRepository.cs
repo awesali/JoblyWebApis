@@ -13,6 +13,21 @@ namespace JoblyWebApi.Data.Repository
             _dbFactory = dbFactory;
         }
 
+        public async Task<NaukriUser> GetNaukriUser(int userId)
+        {
+            using var conn = _dbFactory.CreateConnection();
+
+            var parameters = new { UserId = userId };
+
+            var result = await conn.QueryFirstOrDefaultAsync<NaukriUser>(
+                "GetNaukriUserById",
+                parameters,
+                commandType: CommandType.StoredProcedure
+            );
+
+            return result;
+        }
+
         public async Task<string> GetUser(UserLogin user)
         {
             using var conn = _dbFactory.CreateConnection();

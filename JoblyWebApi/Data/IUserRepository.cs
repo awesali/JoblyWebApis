@@ -6,5 +6,6 @@ namespace JoblyWebApi.Data
     {
         Task<string> RegisterUser(UserRegister user);
         Task<bool> IsUserExists(UserLogin user);
+        Task<NaukriUser> GetNaukriUser(int userId);
     }
 }
