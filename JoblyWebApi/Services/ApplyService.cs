@@ -246,12 +246,12 @@ namespace JoblyWebApi.Services
                                 {
                                     Console.WriteLine($"❓ Question: {question}");
 
-                                    string answer = ResolveAnswer(question,userId);
+                                    string answer = ResolveAnswer(question, userId);
                                     string CheckAnswer = "";
 
                                     if (string.IsNullOrEmpty(answer))
                                     {
-                                        CheckAnswer = ResumeRepository.GetAnswerByQuestion(question);
+                                        CheckAnswer = await _userRepository.GetAnswerByQuestion(question);
                                         answer = string.IsNullOrEmpty(CheckAnswer)
                                             ? await AskGroqAsync(question,userId,"")
                                             : CheckAnswer;
@@ -263,7 +263,7 @@ namespace JoblyWebApi.Services
                                     Console.WriteLine(ConsoleValue);
                                     Console.WriteLine($"📝 Answered: {answer}");
 
-                                    ResumeRepository.SaveQuestionAnswer(_userId, question, answer);
+                                    await _userRepository.InsertResumeQnA(new SaveQuestionAnswer { UserId = userId, Question= question, Answer = answer});
 
                                     var inputBox = driver.FindElement(By.CssSelector("div.footerInputBoxWrapper div.textArea[contenteditable='true']"));
                                     string script = @"
@@ -356,9 +356,9 @@ namespace JoblyWebApi.Services
 
                 if (successMessageFound)
                 {
-                    await new AppliedJobRepository().Save(new AppliedJob
+                    await _userRepository.InsertAppliedJob(new AppliedJob
                     {
-                        UserId = _userId,
+                        UserId = userId,
                         JobTitle = title,
                         Company = company,
                         Location = loc,
@@ -437,7 +437,7 @@ namespace JoblyWebApi.Services
             {
                 Console.WriteLine("⏳ Rate limited. Retrying in 7 seconds...");
                 await Task.Delay(7000);
-                return await AskGroqAsync(question);
+                return await AskGroqAsync(question,userId,apiKey);
             }
 
             if (!response.IsSuccessful)

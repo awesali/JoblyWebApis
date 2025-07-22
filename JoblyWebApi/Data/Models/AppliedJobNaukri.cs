@@ -1,6 +1,6 @@
 ﻿namespace JoblyWebApi.Data.Models
 {
-    public class AppliedJob
+    public class AppliedJobNaukri
     {
         public int UserId { get; set; }
         public string JobTitle { get; set; }

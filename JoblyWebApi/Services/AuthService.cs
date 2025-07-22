@@ -12,6 +12,13 @@ namespace JoblyWebApi.Services
         {
             _userRepository = userRepository;
         }
+
+        public Task<bool> CheckUser(UserLogin user)
+        {
+            user.Password = BCrypt.Net.BCrypt.HashPassword(user.Password);
+            return _userRepository.IsUserExists(user);
+        }
+
         public Task<string> Register(UserRegister user)
         {
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash);

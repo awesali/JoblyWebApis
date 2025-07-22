@@ -1,6 +1,6 @@
 ﻿using System.Data.SqlClient;
 
-public class UserRepository
+public class UserRepositorys
 {
     public User GetByEmail(string email)
     {

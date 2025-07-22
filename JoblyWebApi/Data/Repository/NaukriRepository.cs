@@ -38,7 +38,7 @@ namespace JoblyWebApi.Data.Repository
                 "wwwroot", "resumes", userId.ToString(), fileName);
         }
 
-        public async Task SaveJob(AppliedJob job)
+        public async Task SaveJob(AppliedJobNaukri job)
         {
             using var conn = _dbFactory.CreateConnection();
 

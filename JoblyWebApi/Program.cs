@@ -1,5 +1,7 @@
 ﻿using JoblyWebApi.Data;
 using JoblyWebApi.Data.Repository;
+using JoblyWebApi.Services;
+using JoblyWebApi.Services.Interface;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models; // 👈 Required for Swagger OpenApiInfo & filters
@@ -53,7 +55,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
         };
     });
-builder.Services.AddSingleton<INaukriRepository,NaukriRepository>();
+builder.Services.AddScoped<INaukriRepository,NaukriRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IApplyService, ApplyService>();
+builder.Services.AddScoped<ICommonService, CommonService>();
 var app = builder.Build();
 
 // ✅ 3. Configure the HTTP request pipeline
