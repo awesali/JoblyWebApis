@@ -1,5 +1,4 @@
 ﻿using JoblyWebApi.Data.Models;
-using JoblyWebApi.Repositories;
 
 namespace JoblyWebApi.Data
 {

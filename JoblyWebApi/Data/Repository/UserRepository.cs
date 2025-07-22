@@ -1,6 +1,5 @@
 ﻿using Dapper;
 using JoblyWebApi.Data.Models;
-using JoblyWebApi.Repositories;
 using System.Data;
 
 namespace JoblyWebApi.Data.Repository
@@ -90,6 +89,7 @@ namespace JoblyWebApi.Data.Repository
             );
         }
 
+        
         public async Task<bool> IsUserExists(UserLogin user)
         {
             using var conn = _dbFactory.CreateConnection();
@@ -108,7 +108,6 @@ namespace JoblyWebApi.Data.Repository
             return parameters.Get<bool>("@IsValid");
         }
 
-
         public async Task<string> RegisterUser(UserRegister user)
         {
             using var conn = _dbFactory.CreateConnection();
@@ -120,6 +119,12 @@ namespace JoblyWebApi.Data.Repository
             );
 
             return result ?? "Unknown error";
+        }
+
+
+        Task<NaukriUser> IUserRepository.GetNaukriUser(int userId)
+        {
+            throw new NotImplementedException();
         }
     }
 }
