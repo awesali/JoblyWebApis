@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using JoblyWebApi.Services;
+using JoblyWebApi.Services.Interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models; // 👈 Required for Swagger OpenApiInfo & filters
+using Microsoft.OpenApi.Models;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,14 +11,17 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
+// ✅ 🧠 Register Dependencies BEFORE app.Build()
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<INaukriLoginService, NaukriLoginService>();
+
+// ✅ Swagger config
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "JoblyWebApi", Version = "v1" });
 
-    // ✅ Fix for IFormFile upload in Swagger
-    c.OperationFilter<FormFileOperationFilter>();
+    c.OperationFilter<FormFileOperationFilter>(); // For IFormFile
 
-    // ✅ Optional: Swagger JWT Auth Support
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         In = ParameterLocation.Header,
@@ -24,6 +29,7 @@ builder.Services.AddSwaggerGen(c =>
         Name = "Authorization",
         Type = SecuritySchemeType.ApiKey
     });
+
     c.AddSecurityRequirement(new OpenApiSecurityRequirement {
         {
             new OpenApiSecurityScheme {
@@ -37,7 +43,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// ✅ 2. JWT Authentication configuration
+// ✅ JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -54,18 +60,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 var app = builder.Build();
 
-// ✅ 3. Configure the HTTP request pipeline
+// ✅ 3. Configure middleware pipeline
 if (app.Environment.IsDevelopment())
 {
-    app.UseDeveloperExceptionPage(); // 🔍 Show detailed error
+    app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
 
-// ✅ 4. Add Authentication *before* Authorization
-app.UseAuthentication();
+app.UseAuthentication();  // 👈 BEFORE authorization
 app.UseAuthorization();
 
 app.MapControllers();

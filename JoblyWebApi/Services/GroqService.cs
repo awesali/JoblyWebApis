@@ -9,7 +9,7 @@ public static class GroqService
     {
         var client = new RestClient("https://api.groq.com/openai/v1/chat/completions");
         var request = new RestRequest("", Method.Post);
-        request.AddHeader("Authorization", $"Bearer ");
+        request.AddHeader("Authorization", $"Bearer");
         request.AddHeader("Content-Type", "application/json");
 
         var payload = new
