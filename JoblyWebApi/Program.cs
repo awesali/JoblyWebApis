@@ -60,6 +60,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IApplyService, ApplyService>();
 builder.Services.AddScoped<ICommonService, CommonService>();
+builder.Services.AddScoped<IDbConnectionFactory, SqlConnectionFactory>();
 var app = builder.Build();
 
 // ✅ 3. Configure the HTTP request pipeline

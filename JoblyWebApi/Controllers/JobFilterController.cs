@@ -11,7 +11,7 @@ public class JobFilterController : ControllerBase
     public IActionResult Save([FromBody] UserJobFilter model)
     {
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        new JobFilterRepository().Save(userId, model.Role, model.Location, model.Skills);
+        //new JobFilterRepository().Save(userId, model.Role, model.Location, model.Skills);
         return Ok("Job filters saved");
     }
 
@@ -19,7 +19,7 @@ public class JobFilterController : ControllerBase
     public IActionResult Get()
     {
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        var filters = new JobFilterRepository().GetByUserId(userId);
-        return Ok(filters);
+        //var filters = new JobFilterRepository().GetByUserId(userId);
+        return Ok("filters");
     }
 }

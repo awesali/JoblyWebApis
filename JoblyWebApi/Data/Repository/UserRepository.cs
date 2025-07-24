@@ -43,19 +43,7 @@ namespace JoblyWebApi.Data.Repository
             return result;
         }
 
-        public async Task<string> GetUser(UserLogin user)
-        {
-            using var conn = _dbFactory.CreateConnection();
-
-            var result = await conn.QueryFirstOrDefaultAsync<string>(
-                "GetOrRegisterUser",
-                user,
-                commandType: CommandType.StoredProcedure
-            );
-
-            return result ?? "Unknown error";
-        }
-
+      
         public async Task<string?> GetResumePathAsync(int userId)
         {
             using var conn = _dbFactory.CreateConnection();
@@ -118,7 +106,6 @@ namespace JoblyWebApi.Data.Repository
                 commandType: CommandType.StoredProcedure
             );
         }
-
         
         public async Task<bool> IsUserExists(UserLogin user)
         {
@@ -150,11 +137,6 @@ namespace JoblyWebApi.Data.Repository
 
             return result ?? "Unknown error";
         }
-
-
-        Task<NaukriUser> IUserRepository.GetNaukriUser(int userId)
-        {
-            throw new NotImplementedException();
-        }
+       
     }
 }

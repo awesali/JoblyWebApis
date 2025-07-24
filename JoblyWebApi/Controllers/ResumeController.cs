@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using JoblyWebApi.Repositories;
 
 namespace JoblyWebApi.Controllers
 {
@@ -10,7 +9,6 @@ namespace JoblyWebApi.Controllers
     [ApiController]
     public class ResumeController : ControllerBase
     {
-        private readonly ResumeRepository _repo = new ResumeRepository();
         private readonly IWebHostEnvironment _env;
 
         public ResumeController(IWebHostEnvironment env)
@@ -37,7 +35,7 @@ namespace JoblyWebApi.Controllers
                 await model.File.CopyToAsync(stream);
             }
 
-            _repo.Save(userId, model.File.FileName); // just the file name is saved in DB
+            //_repo.Save(userId, model.File.FileName); // just the file name is saved in DB
             return Ok("Resume uploaded");
         }
     }
