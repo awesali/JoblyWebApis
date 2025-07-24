@@ -20,19 +20,25 @@ public class AutoApplyController : ControllerBase
 
     [HttpPost("naukri")]
     [AllowAnonymous]
-    public IActionResult Apply(int userId)
+    public async Task<IActionResult> Apply(int userId = 0)
     {
-        userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        // Try to get userId from the ClaimsPrincipal if not passed or 0
         if (userId == 0)
         {
-            userId = 1;
+            var claimUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(claimUserId, out userId))
+            {
+                userId = 1; // fallback default userId
+            }
         }
-        var user = _commonService.ApplyService.Result.GetNaukriUser(userId).Result;
-        if (user == null) return BadRequest("No filters found");
 
-        var engine = new NaukriApplyEngine(user.NaukriId, user.NaukriPassword, userId, _config);
-        engine.Run(user.Role, user.Location, user.Skills);
+        var user = await _commonService.ApplyService.Result.GetNaukriUser(userId);
+        if (user == null)
+            return NotFound("No filters found");
 
-        return Ok("Naukri auto-apply completed");
+        var result = await _commonService.ApplyService.Result.ExecuteApply(user);
+
+        return Ok(result ? "Naukri auto-apply completed" : "Error While applying");
     }
+
 }

@@ -1,6 +1,6 @@
 ﻿using JoblyWebApi.Data;
 using JoblyWebApi.Data.Models;
-using JoblyWebApi.Repositories;
+using JoblyWebApi.Models;
 using JoblyWebApi.Services.Interface;
 using Newtonsoft.Json;
 using OpenQA.Selenium;
@@ -246,7 +246,7 @@ namespace JoblyWebApi.Services
                                 {
                                     Console.WriteLine($"❓ Question: {question}");
 
-                                    string answer = ResolveAnswer(question, userId);
+                                    string answer = await ResolveAnswer(question, userId);
                                     string CheckAnswer = "";
 
                                     if (string.IsNullOrEmpty(answer))
@@ -384,26 +384,35 @@ namespace JoblyWebApi.Services
                 Console.WriteLine("❌ Error in ApplyJob: " + ex.Message);
             }
         }
-        private string ResolveAnswer(string question, int userId)
+        private async Task<string> ResolveAnswer(string question, int userId)
         {
-            string q = question.ToLower();
+            string q = question.ToLowerInvariant();
 
-            var user = new UserRepository().GetById(userId);
+            var user = await _userRepository.GetUserById(userId);
+            if (user == null) return "";
 
-            if (q.Contains("current ctc") || q.Contains("current salary")) return user.CurrentCtc ?? "";
-            if (q.Contains("expected ctc") || q.Contains("expected salary")) return user.ExpectedCtc ?? "";
-            if (q.Contains("notice period")) return user.NoticePeriod ?? "";
-            if (q.Contains("how soon") || q.Contains("when can you join")) return user.JoinAvailability ?? "";
+            if (q.Contains("current ctc") || q.Contains("current salary"))
+                return user.CurrentCtc.ToString() ?? "";
 
-            return ""; 
+            if (q.Contains("expected ctc") || q.Contains("expected salary"))
+                return user.ExpectedCtc.ToString() ?? "";
+
+            if (q.Contains("notice period"))
+                return user.NoticePeriod.ToString() ?? "";
+
+            if (q.Contains("how soon") || q.Contains("when can you join"))
+                return user.JoinAvailability.ToString() ?? "";
+
+            return "";
         }
+
         private string _cachedResumeText = null;
 
         private async Task<string> AskGroqAsync(string question, int userId, string apiKey)
         {
             if (_cachedResumeText == null)
             {
-                string resumePath = new ResumeRepository().GetResumePath(userId);
+                string resumePath = await _userRepository.GetResumePathAsync(userId);
                 if (string.IsNullOrEmpty(resumePath) || !System.IO.File.Exists(resumePath))
                 {
                     Console.WriteLine("❌ Resume file not found for user.");

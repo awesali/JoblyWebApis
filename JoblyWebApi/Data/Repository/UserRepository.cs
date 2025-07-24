@@ -1,5 +1,6 @@
 ﻿using Dapper;
 using JoblyWebApi.Data.Models;
+using JoblyWebApi.Models;
 using System.Data;
 
 namespace JoblyWebApi.Data.Repository
@@ -53,6 +54,35 @@ namespace JoblyWebApi.Data.Repository
             );
 
             return result ?? "Unknown error";
+        }
+
+        public async Task<string?> GetResumePathAsync(int userId)
+        {
+            using var conn = _dbFactory.CreateConnection();
+
+            var fileName = await conn.QueryFirstOrDefaultAsync<string>(
+                "GetLatestResumeFileName",
+                new { UserId = userId },
+                commandType: CommandType.StoredProcedure);
+
+            if (string.IsNullOrEmpty(fileName)) return null;
+
+            return Path.Combine(
+                Directory.GetCurrentDirectory(),
+                "wwwroot", "resumes", userId.ToString(), fileName);
+        }
+
+        public async Task<UserDetails> GetUserById(int Id)
+        {
+            using var conn = _dbFactory.CreateConnection();
+
+            var user = await conn.QueryFirstOrDefaultAsync<UserDetails>(
+                "GetUserById",
+                new { Id },
+                commandType: CommandType.StoredProcedure
+            );
+
+            return user;
         }
 
         public async Task InsertAppliedJob(AppliedJob job)

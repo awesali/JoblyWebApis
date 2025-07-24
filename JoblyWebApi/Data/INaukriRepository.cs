@@ -7,6 +7,6 @@ namespace JoblyWebApi.Data
         Task SaveJob(AppliedJobNaukri job);
         Task SaveQuestionAnswer(SaveQuestionAnswer QnA);
         Task<ResumeAnswerResult?> GetAnswerByQuestion(string question);
-        Task<string?> GetResumePathAsync(int userId);
+        
     }
 }

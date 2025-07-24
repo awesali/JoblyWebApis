@@ -1,4 +1,5 @@
 ﻿using JoblyWebApi.Data.Models;
+using JoblyWebApi.Models;
 
 namespace JoblyWebApi.Data
 {
@@ -10,5 +11,7 @@ namespace JoblyWebApi.Data
         Task InsertResumeQnA(SaveQuestionAnswer QaN);
         Task<string> GetAnswerByQuestion(string question);
         Task InsertAppliedJob(AppliedJob job);
+        Task<UserDetails> GetUserById(int Id);
+        Task<string> GetResumePathAsync(int userId);
     }
 }
