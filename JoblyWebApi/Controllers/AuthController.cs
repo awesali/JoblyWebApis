@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity.Data;
+﻿using JoblyWebApi.Repositories.Naukri;
+using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 
 [Route("api/[controller]")]
@@ -6,8 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 public class AuthController : ControllerBase
 {
     private readonly JwtService _jwt;
-    private readonly UserRepository _repo = new UserRepository();
-
+    private readonly UserRepository _repo;
     public AuthController(IConfiguration config)
     {
         _jwt = new JwtService(config["Jwt:Key"]);

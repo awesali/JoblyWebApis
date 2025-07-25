@@ -1,5 +1,4 @@
-﻿using JoblyWebApi.Repositories;
-using JoblyWebApi.Services;
+﻿using JoblyWebApi.Services;
 using Newtonsoft.Json;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
@@ -8,20 +7,35 @@ using RestSharp;
 using SeleniumExtras.WaitHelpers;
 using UglyToad.PdfPig;
 using joblywebapi.Models;
+using JoblyWebApi.Repositories.Naukri;
+using JoblyWebApi.Interface;
 public class NaukriApplyEngine
 {
     private readonly string _email;
     private readonly string _password;
     private readonly int _userId;
     private readonly string _apiKey;
+    private readonly IGroqService _groqService;
+    private readonly IUnitOfWork _uow;
 
-    public NaukriApplyEngine(string email, string password, int userId, IConfiguration config)
+    public NaukriApplyEngine(
+        string email,
+        string password,
+        int userId,
+        IConfiguration config,
+        Func<int, IGroqService> groqFactory,   // ✅ factory lo
+        IUnitOfWork uow)
     {
         _email = email;
         _password = password;
         _userId = userId;
-        _apiKey = config["Groq:ApiKey"];
+        _apiKey = config["Groq:ApiKey"]!;
+        _uow = uow;
+
+        _groqService = groqFactory(userId);    // ✅ yahan se IGroqService banao
     }
+
+
     private bool CheckSuccessMessage(IWebDriver driver)
     {
         try
@@ -72,18 +86,18 @@ public class NaukriApplyEngine
             string[] tabIds = { "apply", "profile", "top_candidate", "preference", "similar_jobs" };
             int appliedCount = 0;
             // 🧠 Extract resume text from PDF
-            string resumePath = new ResumeRepository().GetResumePath(_userId);
+            string resumePath = _uow.Resume.GetResumePath(_userId);
             if (string.IsNullOrEmpty(resumePath) || !System.IO.File.Exists(resumePath))
             {
                 Console.WriteLine("❌ Resume not found for skill match.");
                 return;
             }
 
-            string resumeText = ExtractTextFromPdf(resumePath);
+            string resumeText = _uow.Resume.ExtractTextFromPdf(resumePath);
 
             // 🔎 Ask Groq to extract skill list dynamically
             string skillQuestion = "List all technical skills mentioned in this resume. Return only comma-separated values like: skill1, skill2, skill3.\r\n";
-            string skillAnswer = await AskGroqAsync($"Resume:\n{resumeText}\n\nQuestion: {skillQuestion}");
+            string skillAnswer = await _groqService.AskAsync($"Resume:\n{resumeText}\n\nQuestion: {skillQuestion}");
 
             resumeSkills = skillAnswer
                 .ToLower()
@@ -345,9 +359,9 @@ public class NaukriApplyEngine
 
                                 if (string.IsNullOrEmpty(answer))
                                 {
-                                    CheckAnswer = ResumeRepository.GetAnswerByQuestion(question);
+                                    CheckAnswer = _uow.Naukri.GetAnswerByQuestion(question);
                                     answer = string.IsNullOrEmpty(CheckAnswer)
-                                        ? await AskGroqAsync(question)
+                                        ? await _groqService.AskAsync(question)
                                         : CheckAnswer;
                                 }
 
@@ -357,20 +371,20 @@ public class NaukriApplyEngine
                                 Console.WriteLine(ConsoleValue);
                                 Console.WriteLine($"📝 Answered: {answer}");
 
-                                ResumeRepository.SaveQuestionAnswer(_userId, question, answer);
+                                _uow.Naukri.SaveQuestionAnswer(_userId, question, answer);
 
                                 var inputBox = driver.FindElement(By.CssSelector("div.footerInputBoxWrapper div.textArea[contenteditable='true']"));
                                 string script = @"
-        const inputBox = arguments[0];
-        const text = arguments[1];
-        inputBox.innerText = text;
+                                    const inputBox = arguments[0];
+                                    const text = arguments[1];
+                                    inputBox.innerText = text;
 
-        const event = new Event('input', { bubbles: true });
-        inputBox.dispatchEvent(event);
+                                    const event = new Event('input', { bubbles: true });
+                                    inputBox.dispatchEvent(event);
 
-        const evt = new Event('change', { bubbles: true });
-        inputBox.dispatchEvent(evt);
-    ";
+                                    const evt = new Event('change', { bubbles: true });
+                                    inputBox.dispatchEvent(evt);
+                                ";
                                 ((IJavaScriptExecutor)driver).ExecuteScript(script, inputBox, answer);
                                 await Task.Delay(5000);
 
@@ -384,9 +398,9 @@ public class NaukriApplyEngine
                                     if (!string.IsNullOrEmpty(value) && answer.ToLower().Contains(value))
                                     {
                                         ((IJavaScriptExecutor)driver).ExecuteScript(@"
-                arguments[0].checked = true;
-                arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
-            ", radio);
+                                            arguments[0].checked = true;
+                                            arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
+                                            ", radio);
                                         Console.WriteLine($"✅ MCQ Selected: {value}");
                                         selected = true;
                                         break;
@@ -396,10 +410,44 @@ public class NaukriApplyEngine
                                 if (!selected && radios.Count > 0)
                                 {
                                     ((IJavaScriptExecutor)driver).ExecuteScript(@"
-            arguments[0].checked = true;
-            arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
-        ", radios[0]);
+                                        arguments[0].checked = true;
+                                        arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
+                                        ", radios[0]);
                                     Console.WriteLine("⚠️ No match. Defaulted to first MCQ option.");
+                                }
+                                // ✅ Checkboxes (multi-select)
+                                if (!selected)
+                                {
+                                    var checkboxes = driver.FindElements(By.CssSelector("div.multicheckboxes-container input.mcc__checkbox"));
+                                    if (checkboxes.Count > 0)
+                                    {
+                                        bool anySelected = false;
+                                        foreach (var checkbox in checkboxes)
+                                        {
+                                            var label = checkbox.GetAttribute("value")?.Trim().ToLower();
+                                            if (!string.IsNullOrEmpty(label) && answer.ToLower().Contains(label))
+                                            {
+                                                ((IJavaScriptExecutor)driver).ExecuteScript(@"
+                                                    arguments[0].checked = true;
+                                                    arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
+                                                    ", checkbox);
+                                                Console.WriteLine($"✅ Checkbox Selected: {label}");
+                                                anySelected = true;
+                                            }
+                                        }
+
+                                        // Agar koi match na mile, default first checkbox select kar do
+                                        if (!anySelected)
+                                        {
+                                            ((IJavaScriptExecutor)driver).ExecuteScript(@"
+                                                arguments[0].checked = true;
+                                                arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
+                                                ", checkboxes[0]);
+                                            Console.WriteLine("⚠️ No match in Checkboxes. Defaulted to first option.");
+                                        }
+
+                                        selected = true;  // Mark as handled
+                                    }
                                 }
 
                                 // ✅ Chips
@@ -450,13 +498,13 @@ public class NaukriApplyEngine
             // Act based on what we found
             if (successMessageFound)
             {
-                await new AppliedJobRepository().Save(new AppliedJob
+                await _uow.Naukri.Save(new AppliedJob
                 {
                     UserId = _userId,
                     JobTitle = title,
                     Company = company,
                     Location = loc,
-                    AppliedAt = DateTime.Now
+                    AppliedAt = DateTime.UtcNow
                 });
 
                 Console.WriteLine($"💾 Job saved as applied: {title}");
@@ -478,70 +526,12 @@ public class NaukriApplyEngine
             Console.WriteLine("❌ Error in ApplyJob: " + ex.Message);
         }
     }
-    private string _cachedResumeText = null;
-    private async Task<string> AskGroqAsync(string question)
-    {
-        if (_cachedResumeText == null)
-        {
-            string resumePath = new ResumeRepository().GetResumePath(_userId);
-            if (string.IsNullOrEmpty(resumePath) || !System.IO.File.Exists(resumePath))
-            {
-                Console.WriteLine("❌ Resume file not found for user.");
-                return "Resume not found";
-            }
-
-            _cachedResumeText = ExtractTextFromPdf(resumePath);
-        }
-
-        var client = new RestClient("https://api.groq.com/openai/v1/chat/completions");
-        var request = new RestRequest("", Method.Post);
-        request.AddHeader("Authorization", $"Bearer {_apiKey}");
-        request.AddHeader("Content-Type", "application/json");
-
-        var payload = new
-        {
-            model = "llama3-8b-8192",
-            messages = new[] {
-            new { role = "system", content = "You are the person whose resume is provided. Answer each question in 2-4 words only. Do not use full sentences. Be direct and brief." },
-            new { role = "user", content = $"Resume:\n{_cachedResumeText}\n\nQuestion: {question}" }
-        },
-            temperature = 0.7
-        };
-
-        request.AddStringBody(JsonConvert.SerializeObject(payload), DataFormat.Json);
-
-        var response = await client.ExecuteAsync(request);
-
-        // Retry once if rate limited
-        if ((int)response.StatusCode == 429)
-        {
-            Console.WriteLine("⏳ Rate limited. Retrying in 7 seconds...");
-            await Task.Delay(7000);
-            return await AskGroqAsync(question);
-        }
-
-        if (!response.IsSuccessful)
-            return $"❌ Error: {response.StatusCode} - {response.Content}";
-
-        dynamic json = JsonConvert.DeserializeObject(response.Content);
-        return json?.choices?[0]?.message?.content?.ToString()?.Trim() ?? "❌ No answer found.";
-    }
-
-    static string ExtractTextFromPdf(string path)
-    {
-        using var document = PdfDocument.Open(path);
-        string fullText = "";
-        foreach (var page in document.GetPages())
-        {
-            fullText += page.Text + "\n";
-        }
-        return fullText;
-    }
+    
     private string ResolveAnswer(string question)
     {
         string q = question.ToLower();
 
-        var user = new UserRepository().GetById(_userId); // fetch current user from DB
+        var user = _uow.Naukri.GetById(_userId); // fetch current user from DB
 
         if (q.Contains("current ctc")|| q.Contains("current salary")) return user.CurrentCtc ?? "";
         if (q.Contains("expected ctc") || q.Contains("expected salary")) return user.ExpectedCtc ?? "";

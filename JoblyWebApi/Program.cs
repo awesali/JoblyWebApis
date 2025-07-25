@@ -1,5 +1,7 @@
-﻿using JoblyWebApi.Services;
-using JoblyWebApi.Services.Interfaces;
+﻿using joblywebapi.Helpers;
+using JoblyWebApi.Interface;
+using JoblyWebApi.Repositories;
+using JoblyWebApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -10,10 +12,23 @@ var builder = WebApplication.CreateBuilder(args);
 // ✅ 1. Add services to the container
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddScoped<NaukriLoginService>();
 
-// ✅ 🧠 Register Dependencies BEFORE app.Build()
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped<INaukriLoginService, NaukriLoginService>();
+builder.Services.AddScoped<IUnitOfWork>(sp =>
+    new UnitOfWork(DbConnectionHelper.ConnectionString));
+LinkedInJobHelper.Init(builder.Configuration);
+builder.Services.AddScoped<joblywebapi.Services.LinkedInService>();
+
+// Program.cs
+builder.Services.AddScoped<Func<int, IGroqService>>(sp =>
+{
+    var cfg = sp.GetRequiredService<IConfiguration>();
+    return userId =>
+    {
+        var uow = sp.GetRequiredService<IUnitOfWork>();
+        return new GroqService(cfg["Groq:ApiKey"]!, userId, uow);
+    };
+});
 
 // ✅ Swagger config
 builder.Services.AddSwaggerGen(c =>

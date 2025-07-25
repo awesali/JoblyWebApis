@@ -1,11 +1,10 @@
-﻿using JoblyWebApi.Services.Interfaces;
-using OpenQA.Selenium;
+﻿using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using System.Threading.Tasks;
 
 namespace JoblyWebApi.Services
 {
-    public class NaukriLoginService : INaukriLoginService
+    public class NaukriLoginService
     {
         public async Task<bool> TryLoginAsync(string username, string password)
         {

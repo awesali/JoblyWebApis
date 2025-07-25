@@ -24,6 +24,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Handlers\" />
+    <Folder Include="Services\Naukri\" />
     <Folder Include="wwwroot\resumes\" />
   </ItemGroup>
 

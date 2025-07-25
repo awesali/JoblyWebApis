@@ -4,43 +4,60 @@ using Microsoft.Extensions.Configuration;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium;
 using System.Security.Claims;
-using JoblyWebApi.Services.Interfaces;
 using JoblyWebApi.Repositories;
+using JoblyWebApi.Interface;
+using JoblyWebApi.Services;
+using joblywebapi.Services;
 
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class NaukriController : ControllerBase
 {
-    private readonly IConfiguration _config;
-    private readonly ResumeRepository _repo = new ResumeRepository();
-    private readonly IWebHostEnvironment _env;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly INaukriLoginService _loginService;
-    public NaukriController(IConfiguration config, IWebHostEnvironment env, IUnitOfWork unitOfWork, INaukriLoginService loginService)
-    {
-        _config = config;
-        _env = env;
-        _unitOfWork = unitOfWork;
-        _loginService = loginService;
-    }
+  
+        private readonly IConfiguration _config;
+        private readonly IWebHostEnvironment _env;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly Func<int, IGroqService> _groqFactory; 
+        private readonly NaukriLoginService _naukriLogin;
+        private readonly LinkedInService _linkedIn;
+
+
+        public NaukriController(
+            IConfiguration config,
+            IWebHostEnvironment env,
+            IUnitOfWork unitOfWork,
+            Func<int, IGroqService> groqFactory,
+            NaukriLoginService naukriLogin,
+            LinkedInService linkedIn)
+        {
+            _config = config;
+            _env = env;
+            _unitOfWork = unitOfWork;
+            _groqFactory = groqFactory;
+            _naukriLogin = naukriLogin;
+            _linkedIn = linkedIn;
+        }
+    
+
 
     [HttpPost("naukri")]
     [AllowAnonymous]
-    public IActionResult Apply()
+    public async Task<IActionResult> Apply()
     {
         int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
         userId = 2;
-        // ✅ Get Credentials using Stored Procedure
-        var cred = new NaukriCredentialRepository().GetByUserId(userId);
+
+        // ✅ Await the Task to resolve the issue  
+        var cred = await _unitOfWork.NaukriCredentials.GetByUserIdAsync(userId);
         if (cred == null)
             return BadRequest("No Naukri credentials found");
 
         string email = cred.Username;
         string password = cred.Password;
 
-        // ✅ Pass credentials to engine without filters
-        var engine = new NaukriApplyEngine(email, password, userId, _config);
+        // ✅ Pass credentials to engine with required parameters  
+        var engine = new NaukriApplyEngine(email, password, userId, _config,_groqFactory, _unitOfWork);
         engine.Run();
 
         return Ok("Naukri auto-apply started");
@@ -65,7 +82,7 @@ public class NaukriController : ControllerBase
             await model.File.CopyToAsync(stream);
         }
 
-        _repo.Save(userId, model.File.FileName); // just the file name is saved in DB
+        _unitOfWork.Resume.Save(userId, model.File.FileName);
         return Ok("Resume uploaded");
     }
 
@@ -75,11 +92,11 @@ public class NaukriController : ControllerBase
     {
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-        bool loginSuccess = await _loginService.TryLoginAsync(dto.Username, dto.Password);
+        bool loginSuccess = await _naukriLogin.TryLoginAsync(dto.Username, dto.Password);
         if (!loginSuccess)
             return BadRequest(new { message = "❌ Invalid Naukri login." });
 
-        await _unitOfWork.NaukriCredentialRepository.SaveNaukriCredentialsAsync(userId, dto.Username, dto.Password);
+        await _unitOfWork.NaukriCredentials.SaveNaukriCredentialsAsync(userId, dto.Username, dto.Password);
 
         return Ok(new { message = "✅ Saved successfully after verifying login." });
     }
@@ -89,23 +106,29 @@ public class NaukriController : ControllerBase
     {
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-        var data = new NaukriCredentialRepository().GetByUserId(userId);
+        var data = _unitOfWork.NaukriCredentials.GetByUserIdAsync(userId);
         if (data == null)
             return NotFound(new { message = "❌ No credentials found." });
 
         return Ok(data);
     }
 
-  
-
+ 
         [HttpGet("paged")]
         public IActionResult GetPagedJobs(int page = 1, int pageSize = 10)
         {
             int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-            var data = new AppliedJobRepository().GetPagedJobsByUserId(userId, page, pageSize);
+            var data = _unitOfWork.Naukri.GetPagedJobsByUserId(userId, page, pageSize);
             return Ok(data);
         }
-   
+
+    [HttpPost("run")]
+    [AllowAnonymous]
+    public IActionResult Run()
+    {
+        var result = _linkedIn.RunLinkedInAutomation();
+        return Ok(new { message = result });
+    }
 
 }

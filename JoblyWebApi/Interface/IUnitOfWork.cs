@@ -1,4 +1,12 @@
-﻿public interface IUnitOfWork
+﻿using JoblyWebApi.Interface.Naukri;
+
+namespace JoblyWebApi.Interface
 {
-    INaukriCredentialRepository NaukriCredentialRepository { get; }
+    public interface IUnitOfWork : IDisposable
+    {
+        INaukriRepository Naukri { get; }
+        IResumeRepository Resume { get; }
+        IUserRepository Users { get; }
+        INaukriCredentialRepository NaukriCredentials { get; }
+    }
 }
